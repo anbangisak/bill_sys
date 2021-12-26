@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	_ "embed"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 
@@ -16,6 +18,17 @@ type person struct {
 	email      string
 	ip_address string
 }
+
+type dashboard struct {
+	Title       string
+	Search_user string
+	Last5_user  map[int]string
+	Footer      string
+}
+
+// dashboard page var
+//go:embed Templates/AllContent.html
+var allContent string
 
 func addPerson(db *sql.DB, newPerson person) {
 	stmt, _ := db.Prepare("INSERT INTO people (id, first_name, last_name, email, ip_address) VALUES (?, ?, ?, ?, ?)")
@@ -36,17 +49,9 @@ func prepareAddPerson(db *sql.DB) {
 	addPerson(db, newPerson)
 }
 
-func main() {
-	db, err := sql.Open("sqlite3", "./auro.db")
-	// db, err := sql.Open("sqlite3", ":memory:")
-	checkErr(err)
-	defer db.Close()
-
-	//2. fail-fast if can't connect to DB
-	checkErr(db.Ping())
-
+func createInsertDefaultUser(db *sql.DB) {
 	//3. create table
-	_, err = db.Exec("create table USER (ID integer PRIMARY KEY, NAME string not null); delete from USER;")
+	_, err := db.Exec("create table USER (ID integer PRIMARY KEY, NAME string not null); delete from USER;")
 	checkErr(err)
 
 	//4. insert data
@@ -66,11 +71,29 @@ func main() {
 
 	//4.3 Commit transaction
 	tx.Commit()
+}
+
+func main() {
+	db, err := sql.Open("sqlite3", "./auro.db")
+	// db, err := sql.Open("sqlite3", ":memory:")
+	checkErr(err)
+	defer db.Close()
+
+	//2. fail-fast if can't connect to DB
+	checkErr(db.Ping())
+
+	// createInsertDefaultUser(db)
 
 	//5. Query data
 	rows, err := db.Query("select * from USER")
 	checkErr(err)
 	defer rows.Close()
+
+	dashboard_data := dashboard{
+		Title:      "Kings Systems",
+		Footer:     "Shop No: 14, Quber plaza, Opp. to Collectorate complex, Villupuram - 605602.",
+		Last5_user: make(map[int]string),
+	}
 
 	//5.1 Iterate through result set
 	for rows.Next() {
@@ -79,15 +102,25 @@ func main() {
 		err := rows.Scan(&id, &name)
 		checkErr(err)
 		fmt.Printf("id=%d, name=%s\n", id, name)
+		dashboard_data.Last5_user[id] = name
 	}
+
+	fmt.Println(dashboard_data)
 
 	//5.2 check error, if any, that were encountered during iteration
 	err = rows.Err()
 	checkErr(err)
 
+	var templ *template.Template
+	templ, err = template.New("allContentHtml").Parse(allContent)
+	if err != nil {
+		log.Fatalf("Template for Detail HTML publish failed : %v", err.Error())
+	}
+
 	// prepareAddPerson(db)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello world from GfG")
+		// fmt.Fprintf(w, "Hello world from GfG")
+		templ.Execute(w, dashboard_data)
 	})
 	http.HandleFunc("/hi", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hi")
