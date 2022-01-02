@@ -14,14 +14,6 @@ import (
 	"github.com/sony/sonyflake"
 )
 
-type person struct {
-	id         int
-	first_name string
-	last_name  string
-	email      string
-	ip_address string
-}
-
 func genSonyflake() uint64 {
 	flake := sonyflake.NewSonyflake(sonyflake.Settings{})
 	id, err := flake.NextID()
@@ -33,58 +25,34 @@ func genSonyflake() uint64 {
 	return id
 }
 
-type dashboard struct {
-	Title       string
-	Search_user string
-	Last5_user  map[int]string
-	Footer      string
+// TaxInfo struct
+type TaxInfo struct {
+	Id            int
+	Name          string
+	InvoiceNumber string
+	Date          string
+	TanNumber     string
+	Fy            string
+	OfficeName    string
+	Description   string
+	Amount        string
+	AmountInWord  string
 }
 
-// dashboard page var
-//go:embed Templates/AllContent.html
-var allContent string
-
-func addPerson(db *sql.DB, newPerson person) {
-	stmt, _ := db.Prepare("INSERT INTO people (id, first_name, last_name, email, ip_address) VALUES (?, ?, ?, ?, ?)")
-	stmt.Exec(nil, newPerson.first_name, newPerson.last_name, newPerson.email, newPerson.ip_address)
-	defer stmt.Close()
-
-	fmt.Printf("Added %v %v \n", newPerson.first_name, newPerson.last_name)
-}
-
-func prepareAddPerson(db *sql.DB) {
-	newPerson := person{
-		first_name: "anban",
-		last_name:  "gisak",
-		email:      "anbangisak@gmail.com",
-		ip_address: "127.0.0.1",
+func dbConn() (db *sql.DB) {
+	db, err := sql.Open("sqlite3", "./auro.db")
+	// db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		panic(err.Error())
 	}
-
-	addPerson(db, newPerson)
+	return db
 }
 
-func createInsertDefaultUser(db *sql.DB) {
-	//3. create table
-	_, err := db.Exec("create table USER (ID integer PRIMARY KEY, NAME string not null); delete from USER;")
+func createTaxInfo(db *sql.DB) {
+	varCharStr := "varchar(80) DEFAULT NULL"
+	varCharDesc := "varchar(255) DEFAULT NULL"
+	_, err := db.Exec("CREATE TABLE taxinfo (id INTEGER PRIMARY KEY AUTOINCREMENT, name " + varCharStr + ", invoicenumber " + varCharStr + ", dateval " + varCharStr + ", tannumber " + varCharStr + ", fy " + varCharStr + ", officename " + varCharStr + ", description " + varCharDesc + ", amount " + varCharStr + ", amountinword " + varCharStr + ")")
 	checkErr(err)
-
-	//4. insert data
-	//4.1 Begin transaction
-	tx, err := db.Begin()
-	checkErr(err)
-
-	//4.2 Prepare insert stmt.
-	stmt, err := tx.Prepare("insert into USER(ID, NAME) values(?, ?)")
-	checkErr(err)
-	defer stmt.Close()
-
-	for i := 0; i < 10; i++ {
-		_, err = stmt.Exec(i, fmt.Sprint("user-", i))
-		checkErr(err)
-	}
-
-	//4.3 Commit transaction
-	tx.Commit()
 }
 
 func GeneratePdf(filename string) error {
@@ -235,64 +203,193 @@ func GeneratePdf(filename string) error {
 	return pdf.OutputFileAndClose(filename)
 }
 
+var tmpl = template.Must(template.ParseGlob("Templates/*"))
+
+func New(w http.ResponseWriter, r *http.Request) {
+	tmpl.ExecuteTemplate(w, "New", nil)
+}
+
+//Index handler
+func Index(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	selDB, err := db.Query("SELECT * FROM taxinfo ORDER BY id DESC")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	taxInfo := TaxInfo{}
+	res := []TaxInfo{}
+
+	for selDB.Next() {
+		var id int
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		if err != nil {
+			panic(err.Error())
+		}
+		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + desc + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
+
+		taxInfo.Id = id
+		taxInfo.Name = name
+		taxInfo.InvoiceNumber = invoiceNumber
+		taxInfo.Date = dateVal
+		taxInfo.TanNumber = tanNumber
+		taxInfo.Fy = fy
+		taxInfo.OfficeName = officeName
+		taxInfo.Description = desc
+		taxInfo.Amount = amount
+		taxInfo.AmountInWord = amountInWord
+		res = append(res, taxInfo)
+	}
+	tmpl.ExecuteTemplate(w, "Index", res)
+	defer db.Close()
+}
+
+//Show handler
+func Show(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	nId := r.URL.Query().Get("id")
+	selDB, err := db.Query("SELECT * FROM taxinfo WHERE id=?", nId)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	taxInfo := TaxInfo{}
+
+	for selDB.Next() {
+		var id int
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + desc + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
+
+		taxInfo.Id = id
+		taxInfo.Name = name
+		taxInfo.InvoiceNumber = invoiceNumber
+		taxInfo.Date = dateVal
+		taxInfo.TanNumber = tanNumber
+		taxInfo.Fy = fy
+		taxInfo.OfficeName = officeName
+		taxInfo.Description = desc
+		taxInfo.Amount = amount
+		taxInfo.AmountInWord = amountInWord
+	}
+	tmpl.ExecuteTemplate(w, "Show", taxInfo)
+	defer db.Close()
+}
+
+func Edit(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	nId := r.URL.Query().Get("id")
+	selDB, err := db.Query("SELECT * FROM taxinfo WHERE id=?", nId)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	taxInfo := TaxInfo{}
+
+	for selDB.Next() {
+		var id int
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		taxInfo.Id = id
+		taxInfo.Name = name
+		taxInfo.InvoiceNumber = invoiceNumber
+		taxInfo.Date = dateVal
+		taxInfo.TanNumber = tanNumber
+		taxInfo.Fy = fy
+		taxInfo.OfficeName = officeName
+		taxInfo.Description = desc
+		taxInfo.Amount = amount
+		taxInfo.AmountInWord = amountInWord
+	}
+
+	tmpl.ExecuteTemplate(w, "Edit", taxInfo)
+	defer db.Close()
+}
+
+func Insert(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	if r.Method == "POST" {
+		name := r.FormValue("name")
+		invoiceNumber := r.FormValue("invoicenumber")
+		dateVal := r.FormValue("dateval")
+		tanNumber := r.FormValue("tannumber")
+		fy := r.FormValue("fy")
+		officeName := r.FormValue("officename")
+		description := r.FormValue("desc")
+		amount := r.FormValue("amount")
+		amountInWord := r.FormValue("amountinword")
+
+		insForm, err := db.Prepare("INSERT INTO taxinfo (name, invoicenumber, dateval, tannumber, fy, officename, description, amount, amountinword) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		if err != nil {
+			panic(err.Error())
+		}
+		insForm.Exec(name, invoiceNumber, dateVal, tanNumber, fy, officeName, description, amount, amountInWord)
+		log.Println("Insert Data: name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + description + " | amount " + amount + " | amountInWord " + amountInWord)
+	}
+	defer db.Close()
+	http.Redirect(w, r, "/", 301)
+}
+
+func Update(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	if r.Method == "POST" {
+		name := r.FormValue("name")
+		invoiceNumber := r.FormValue("invoicenumber")
+		dateVal := r.FormValue("dateval")
+		tanNumber := r.FormValue("tannumber")
+		fy := r.FormValue("fy")
+		officeName := r.FormValue("officename")
+		description := r.FormValue("desc")
+		amount := r.FormValue("amount")
+		amountInWord := r.FormValue("amountinword")
+		id := r.FormValue("uid")
+		insForm, err := db.Prepare("UPDATE taxinfo SET name=?, invoicenumber=?, dateval=?, tannumber=?, fy=?, officename=?, description=?, amount=?, amountinword=? WHERE id=?")
+		if err != nil {
+			panic(err.Error())
+		}
+		insForm.Exec(name, invoiceNumber, dateVal, tanNumber, fy, officeName, description, amount, amountInWord, id)
+		log.Println("UPDATE Data: name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + description + " | amount " + amount + " | amountInWord " + amountInWord)
+	}
+	defer db.Close()
+	http.Redirect(w, r, "/", 301)
+}
+
 func main() {
 
-	db, err := sql.Open("sqlite3", "./auro.db")
-	// db, err := sql.Open("sqlite3", ":memory:")
-	checkErr(err)
-	defer db.Close()
+	// use first time, when need to create db
+	/*
+		db := dbConn()
+		defer db.Close()
 
-	//2. fail-fast if can't connect to DB
-	checkErr(db.Ping())
+		// fail-fast if can't connect to DB
+		checkErr(db.Ping())
 
-	// createInsertDefaultUser(db)
+		createTaxInfo(db)
+	*/
 
-	//5. Query data
-	rows, err := db.Query("select * from USER")
-	checkErr(err)
-	defer rows.Close()
+	// Generation Pdf
+	/*
+		err := GeneratePdf("hello.pdf")
+		if err != nil {
+			panic(err)
+		}
+	*/
 
-	err = GeneratePdf("hello.pdf")
-	if err != nil {
-		panic(err)
-	}
-
-	dashboard_data := dashboard{
-		Title:      "Kings Systems",
-		Footer:     "Shop No: 14, Quber plaza, Opp. to Collectorate complex, Villupuram - 605602.",
-		Last5_user: make(map[int]string),
-	}
-
-	//5.1 Iterate through result set
-	for rows.Next() {
-		var name string
-		var id int
-		err := rows.Scan(&id, &name)
-		checkErr(err)
-		fmt.Printf("id=%d, name=%s\n", id, name)
-		dashboard_data.Last5_user[id] = name
-	}
-
-	fmt.Println(dashboard_data)
-
-	//5.2 check error, if any, that were encountered during iteration
-	err = rows.Err()
-	checkErr(err)
-
-	var templ *template.Template
-	templ, err = template.New("allContentHtml").Parse(allContent)
-	if err != nil {
-		log.Fatalf("Template for Detail HTML publish failed : %v", err.Error())
-	}
-
-	// prepareAddPerson(db)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// fmt.Fprintf(w, "Hello world from GfG")
-		templ.Execute(w, dashboard_data)
-	})
-	http.HandleFunc("/hi", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hi")
-	})
+	http.HandleFunc("/new", New)
+	http.HandleFunc("/", Index)
+	http.HandleFunc("/show", Show)
+	http.HandleFunc("/insert", Insert)
+	http.HandleFunc("/edit", Edit)
+	http.HandleFunc("/update", Update)
 	port := ":8200"
 	fmt.Println("Server is running on port" + port)
 

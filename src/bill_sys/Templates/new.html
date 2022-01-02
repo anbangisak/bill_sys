@@ -1,0 +1,46 @@
+{{ define "New" }}
+  {{ template "Header" }}
+    <div class="container col-5">
+        <h2>New TaxInfo</h2>  
+        <form method="POST" action="/insert">
+          <div class="form-group">
+              <label> Name </label>
+              <input type="text" name="name" class="form-control"/>
+          </div>
+          <div class="form-group">
+              <label> InvoiceNumber </label>
+              <input type="text" name="invoicenumber" class="form-control"/>
+          </div>
+          <div class="form-group">
+              <label> Date </label>
+              <input type="text" name="dateval" class="form-control" placeholder="eg. 05-07-1993"/>
+          </div>
+          <div class="form-group">
+              <label> Tan Number </label>
+              <input type="text" name="tannumber" class="form-control" />
+          </div>
+          <div class="form-group">
+              <label> Financial Year </label>
+              <input type="text" name="fy" class="form-control" placeholder="eg. 2021 - 2022"/>
+          </div>
+          <div class="form-group">
+              <label> Office Name </label>
+              <input type="text" name="officename" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Description </label>
+            <input type="text" name="desc" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Amount </label>
+            <input type="text" name="amount" class="form-control" placeholder="eg. 1000.00"/>
+          </div>
+          <div class="form-group">
+            <label> Amount In Words </label>
+            <input type="text" name="amountinword" class="form-control"/>
+          </div>
+          <input type="submit" value="Save TaxInfo" class="btn btn-primary"/>
+        </form>
+    </div> 
+  {{ template "Footer" }}
+{{ end }}

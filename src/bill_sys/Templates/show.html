@@ -1,0 +1,19 @@
+{{ define "Show" }}
+  {{ template "Header" }}
+    <div class="container">
+        <h2> Tax Info</h2>
+        <p><strong>Name:</strong> {{ .Name }} </p>
+        <p><strong>Invoice Number:</strong> {{ .InvoiceNumber }} </p>
+        <p><strong>Date:</strong>{{ .Date }}</p>
+        <p><strong>Tan Number:</strong> {{ .TanNumber }} </p>
+        <p><strong>Financial Year:</strong> {{ .Fy }} </p>
+        <p><strong>Office Name:</strong> {{ .OfficeName }} </p>
+        <p><strong>Description:</strong>{{ .Description }}</p>
+        <p><strong>Amount:</strong> {{ .Amount }} </p>
+        <p><strong>Amount In Words:</strong> {{ .AmountInWord }} </p>
+        <br /> 
+        <a href="/edit?id={{ .Id }}" class="btn btn-primary">Edit</a>
+        <a href="/" class="btn btn-primary">Go back to Tax Index</a>
+    </div>
+  {{ template "Footer" }}
+{{ end }}
