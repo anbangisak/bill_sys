@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/jung-kurt/gofpdf"
 	_ "github.com/mattn/go-sqlite3"
@@ -55,7 +54,40 @@ func createTaxInfo(db *sql.DB) {
 	checkErr(err)
 }
 
-func GeneratePdf(filename string) error {
+func GeneratePdf(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	nId := r.URL.Query().Get("id")
+	selDB, err := db.Query("SELECT * FROM taxinfo WHERE id=?", nId)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	taxInfo := TaxInfo{}
+
+	for selDB.Next() {
+		var id int
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + desc + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
+
+		taxInfo.Id = id
+		taxInfo.Name = name
+		taxInfo.InvoiceNumber = invoiceNumber
+		taxInfo.Date = dateVal
+		taxInfo.TanNumber = tanNumber
+		taxInfo.Fy = fy
+		taxInfo.OfficeName = officeName
+		taxInfo.Description = desc
+		taxInfo.Amount = amount
+		taxInfo.AmountInWord = amountInWord
+	}
+	// tmpl.ExecuteTemplate(w, "Show", taxInfo)
+	defer db.Close()
+	// func GeneratePdf(filename string) error {
 
 	// const (
 	// 	colCount = 4
@@ -92,27 +124,28 @@ func GeneratePdf(filename string) error {
 
 	pdf.SetFont("Arial", "", 12)
 	pdf.SetXY(0, 70)
-	invoice_num := genSonyflake()
-	invoice_num_str := fmt.Sprintf("INVOICE NO: %x", invoice_num)
+	// invoice_num := genSonyflake()
+	// invoice_num_str := fmt.Sprintf("INVOICE NO: %x", invoice_num)
+	invoice_num_str := "INVOICE NO: " + taxInfo.InvoiceNumber
 	pdf.CellFormat(100, 7, invoice_num_str, "0", 0, "CM", false, 0, "")
 
 	pdf.SetXY(135, 70)
-	date_val := time.Now()
-	date_str := fmt.Sprintf("Date: %v", date_val.Format("02/01/2006"))
+	// date_val := time.Now()
+	date_str := "Date: " + taxInfo.Date
 	pdf.CellFormat(80, 7, date_str, "0", 0, "CM", false, 0, "")
 
 	// tanOffiName table
 	pdf.SetFont("Arial", "B", 11)
 	pdf.SetXY(20, 80)
 	pdf.CellFormat(30.0, 10.0, "TAN NO", "1", 0, "LM", false, 0, "")
-	tanNo := "CHET18709F"
+	tanNo := taxInfo.TanNumber
 	pdf.SetFont("Arial", "", 11)
 	pdf.SetXY(50, 80)
 	pdf.CellFormat(88.0, 10.0, tanNo, "1", 0, "LM", false, 0, "")
 	pdf.SetFont("Arial", "B", 11)
 	pdf.SetXY(20, 90)
 	pdf.CellFormat(30.0, 24.0, "OFFICE NAME", "1", 0, "LM", false, 0, "")
-	officeName := "PHC MUGAIYUR."
+	officeName := taxInfo.OfficeName
 	pdf.SetFont("Arial", "", 11)
 	pdf.SetXY(50, 90)
 	pdf.CellFormat(88.0, 24.0, officeName, "1", 0, "LM", false, 0, "")
@@ -126,7 +159,7 @@ func GeneratePdf(filename string) error {
 	pdf.CellFormat(30.0, 14.0, "AMOUNT", "1", 0, "LM", false, 0, "")
 
 	ht := pdf.PointConvert(8)
-	fyStr := "2021-2022"
+	fyStr := taxInfo.Fy
 
 	desc1 := "Fees for e-Filing Income Tax Quarterly returns"
 	desc2 := "(Tax Deducted at Source)for the FY " + fyStr + " and"
@@ -143,7 +176,7 @@ func GeneratePdf(filename string) error {
 	pdf.SetXY(28, 159)
 	pdf.CellFormat(110.0, ht, desc3, "", 1, "LM", false, 0, "")
 	pdf.Ln(ht)
-	amount := 1400.00
+	amount := taxInfo.Amount
 	pdf.SetXY(130, 138)
 	pdf.CellFormat(30.0, 24.0, fmt.Sprintf("%v", amount), "1", 0, "LM", false, 0, "")
 
@@ -155,7 +188,7 @@ func GeneratePdf(filename string) error {
 
 	pdf.SetXY(15, 182)
 	// date_val := time.Now()
-	rupeesStr := "(Rupees One thousand and Four Hundred Only)"
+	rupeesStr := "(" + taxInfo.AmountInWord + ")"
 	pdf.CellFormat(110, 10, rupeesStr, "0", 0, "CM", false, 0, "")
 
 	pdf.SetXY(20, 202)
@@ -200,7 +233,12 @@ func GeneratePdf(filename string) error {
 	pdf.SetXY(35, 270)
 	pdf.CellFormat(150.0, ht, "E-mail : kingsetdscenter@gmail.com", "", 1, "CM", false, 0, "")
 
-	return pdf.OutputFileAndClose(filename)
+	err = pdf.OutputFileAndClose(taxInfo.TanNumber + ".pdf")
+	if err != nil {
+		panic(err.Error())
+	}
+	http.ServeFile(w, r, taxInfo.TanNumber+".pdf")
+
 }
 
 var tmpl = template.Must(template.ParseGlob("Templates/*"))
@@ -390,6 +428,7 @@ func main() {
 	http.HandleFunc("/insert", Insert)
 	http.HandleFunc("/edit", Edit)
 	http.HandleFunc("/update", Update)
+	http.HandleFunc("/exportpdf", GeneratePdf)
 	port := ":8200"
 	fmt.Println("Server is running on port" + port)
 
