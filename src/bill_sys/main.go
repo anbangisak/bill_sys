@@ -33,9 +33,12 @@ type TaxInfo struct {
 	TanNumber     string
 	Fy            string
 	OfficeName    string
-	Description   string
-	Amount        string
-	AmountInWord  string
+	// Description   string
+	Description1 string
+	Description2 string
+	Description3 string
+	Amount       string
+	AmountInWord string
 }
 
 func dbConn() (db *sql.DB) {
@@ -50,7 +53,7 @@ func dbConn() (db *sql.DB) {
 func createTaxInfo(db *sql.DB) {
 	varCharStr := "varchar(80) DEFAULT NULL"
 	varCharDesc := "varchar(255) DEFAULT NULL"
-	_, err := db.Exec("CREATE TABLE taxinfo (id INTEGER PRIMARY KEY AUTOINCREMENT, name " + varCharStr + ", invoicenumber " + varCharStr + ", dateval " + varCharStr + ", tannumber " + varCharStr + ", fy " + varCharStr + ", officename " + varCharStr + ", description " + varCharDesc + ", amount " + varCharStr + ", amountinword " + varCharStr + ")")
+	_, err := db.Exec("CREATE TABLE taxinfo (id INTEGER PRIMARY KEY AUTOINCREMENT, name " + varCharStr + ", invoicenumber " + varCharStr + ", dateval " + varCharStr + ", tannumber " + varCharStr + ", fy " + varCharStr + ", officename " + varCharStr + ", description1 " + varCharDesc + ", description2 " + varCharDesc + ", description3 " + varCharDesc + ", amount " + varCharStr + ", amountinword " + varCharStr + ")")
 	checkErr(err)
 }
 
@@ -66,13 +69,13 @@ func GeneratePdf(w http.ResponseWriter, r *http.Request) {
 
 	for selDB.Next() {
 		var id int
-		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
-		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc1, desc2, desc3, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc1, &desc2, &desc3, &amount, &amountInWord)
 		if err != nil {
 			panic(err.Error())
 		}
 
-		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + desc + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
+		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description1 " + desc1 + " | description2 " + desc2 + " | description3 " + desc3 + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
 
 		taxInfo.Id = id
 		taxInfo.Name = name
@@ -81,7 +84,9 @@ func GeneratePdf(w http.ResponseWriter, r *http.Request) {
 		taxInfo.TanNumber = tanNumber
 		taxInfo.Fy = fy
 		taxInfo.OfficeName = officeName
-		taxInfo.Description = desc
+		taxInfo.Description1 = desc1
+		taxInfo.Description2 = desc2
+		taxInfo.Description3 = desc3
 		taxInfo.Amount = amount
 		taxInfo.AmountInWord = amountInWord
 	}
@@ -159,11 +164,11 @@ func GeneratePdf(w http.ResponseWriter, r *http.Request) {
 	pdf.CellFormat(30.0, 14.0, "AMOUNT", "1", 0, "LM", false, 0, "")
 
 	ht := pdf.PointConvert(8)
-	fyStr := taxInfo.Fy
+	// fyStr := taxInfo.Fy
 
-	desc1 := "Fees for e-Filing Income Tax Quarterly returns"
-	desc2 := "(Tax Deducted at Source)for the FY " + fyStr + " and"
-	desc3 := "Quarters Q1,Q2,Q3 and Q4"
+	desc1 := taxInfo.Description1
+	desc2 := taxInfo.Description2
+	desc3 := taxInfo.Description3
 
 	pdf.SetXY(20, 138)
 	pdf.CellFormat(110.0, 24.0, "", "1", 1, "LM", false, 0, "")
@@ -260,12 +265,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
 	for selDB.Next() {
 		var id int
-		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
-		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc1, desc2, desc3, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc1, &desc2, &desc3, &amount, &amountInWord)
 		if err != nil {
 			panic(err.Error())
 		}
-		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + desc + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
+		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description1 " + desc1 + " | description2 " + desc2 + " | description3 " + desc3 + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
 
 		taxInfo.Id = id
 		taxInfo.Name = name
@@ -274,7 +279,9 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		taxInfo.TanNumber = tanNumber
 		taxInfo.Fy = fy
 		taxInfo.OfficeName = officeName
-		taxInfo.Description = desc
+		taxInfo.Description1 = desc1
+		taxInfo.Description2 = desc2
+		taxInfo.Description3 = desc3
 		taxInfo.Amount = amount
 		taxInfo.AmountInWord = amountInWord
 		res = append(res, taxInfo)
@@ -296,13 +303,13 @@ func Show(w http.ResponseWriter, r *http.Request) {
 
 	for selDB.Next() {
 		var id int
-		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
-		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc1, desc2, desc3, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc1, &desc2, &desc3, &amount, &amountInWord)
 		if err != nil {
 			panic(err.Error())
 		}
 
-		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + desc + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
+		log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description1 " + desc1 + " | description2 " + desc2 + " | description3 " + desc3 + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
 
 		taxInfo.Id = id
 		taxInfo.Name = name
@@ -311,7 +318,9 @@ func Show(w http.ResponseWriter, r *http.Request) {
 		taxInfo.TanNumber = tanNumber
 		taxInfo.Fy = fy
 		taxInfo.OfficeName = officeName
-		taxInfo.Description = desc
+		taxInfo.Description1 = desc1
+		taxInfo.Description2 = desc2
+		taxInfo.Description3 = desc3
 		taxInfo.Amount = amount
 		taxInfo.AmountInWord = amountInWord
 	}
@@ -331,8 +340,8 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 
 	for selDB.Next() {
 		var id int
-		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc, amount, amountInWord string
-		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc, &amount, &amountInWord)
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc1, desc2, desc3, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc1, &desc2, &desc3, &amount, &amountInWord)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -344,7 +353,9 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 		taxInfo.TanNumber = tanNumber
 		taxInfo.Fy = fy
 		taxInfo.OfficeName = officeName
-		taxInfo.Description = desc
+		taxInfo.Description1 = desc1
+		taxInfo.Description2 = desc2
+		taxInfo.Description3 = desc3
 		taxInfo.Amount = amount
 		taxInfo.AmountInWord = amountInWord
 	}
@@ -362,16 +373,18 @@ func Insert(w http.ResponseWriter, r *http.Request) {
 		tanNumber := r.FormValue("tannumber")
 		fy := r.FormValue("fy")
 		officeName := r.FormValue("officename")
-		description := r.FormValue("desc")
+		description1 := r.FormValue("desc1")
+		description2 := r.FormValue("desc2")
+		description3 := r.FormValue("desc3")
 		amount := r.FormValue("amount")
 		amountInWord := r.FormValue("amountinword")
 
-		insForm, err := db.Prepare("INSERT INTO taxinfo (name, invoicenumber, dateval, tannumber, fy, officename, description, amount, amountinword) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		insForm, err := db.Prepare("INSERT INTO taxinfo (name, invoicenumber, dateval, tannumber, fy, officename, description1, description2, description3, amount, amountinword) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
 			panic(err.Error())
 		}
-		insForm.Exec(name, invoiceNumber, dateVal, tanNumber, fy, officeName, description, amount, amountInWord)
-		log.Println("Insert Data: name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + description + " | amount " + amount + " | amountInWord " + amountInWord)
+		insForm.Exec(name, invoiceNumber, dateVal, tanNumber, fy, officeName, description1, description2, description3, amount, amountInWord)
+		log.Println("Insert Data: name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description1 " + description1 + " | description2 " + description2 + " | description3 " + description3 + " | amount " + amount + " | amountInWord " + amountInWord)
 	}
 	defer db.Close()
 	http.Redirect(w, r, "/", 301)
@@ -386,16 +399,18 @@ func Update(w http.ResponseWriter, r *http.Request) {
 		tanNumber := r.FormValue("tannumber")
 		fy := r.FormValue("fy")
 		officeName := r.FormValue("officename")
-		description := r.FormValue("desc")
+		description1 := r.FormValue("desc1")
+		description2 := r.FormValue("desc2")
+		description3 := r.FormValue("desc3")
 		amount := r.FormValue("amount")
 		amountInWord := r.FormValue("amountinword")
 		id := r.FormValue("uid")
-		insForm, err := db.Prepare("UPDATE taxinfo SET name=?, invoicenumber=?, dateval=?, tannumber=?, fy=?, officename=?, description=?, amount=?, amountinword=? WHERE id=?")
+		insForm, err := db.Prepare("UPDATE taxinfo SET name=?, invoicenumber=?, dateval=?, tannumber=?, fy=?, officename=?, description1=?, description2=?, description3=?, amount=?, amountinword=? WHERE id=?")
 		if err != nil {
 			panic(err.Error())
 		}
-		insForm.Exec(name, invoiceNumber, dateVal, tanNumber, fy, officeName, description, amount, amountInWord, id)
-		log.Println("UPDATE Data: name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description " + description + " | amount " + amount + " | amountInWord " + amountInWord)
+		insForm.Exec(name, invoiceNumber, dateVal, tanNumber, fy, officeName, description1, description2, description3, amount, amountInWord, id)
+		log.Println("UPDATE Data: name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description1 " + description1 + " | description2 " + description2 + " | description3 " + description3 + " | amount " + amount + " | amountInWord " + amountInWord)
 	}
 	defer db.Close()
 	http.Redirect(w, r, "/", 301)
@@ -407,19 +422,9 @@ func main() {
 	/*
 		db := dbConn()
 		defer db.Close()
-
 		// fail-fast if can't connect to DB
 		checkErr(db.Ping())
-
 		createTaxInfo(db)
-	*/
-
-	// Generation Pdf
-	/*
-		err := GeneratePdf("hello.pdf")
-		if err != nil {
-			panic(err)
-		}
 	*/
 
 	http.HandleFunc("/new", New)
