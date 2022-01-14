@@ -252,6 +252,42 @@ func New(w http.ResponseWriter, r *http.Request) {
 	tmpl.ExecuteTemplate(w, "New", nil)
 }
 
+func NewClone(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	nId := r.URL.Query().Get("id")
+	selDB, err := db.Query("SELECT * FROM taxinfo WHERE id=?", nId)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	taxInfo := TaxInfo{}
+
+	for selDB.Next() {
+		var id int
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc1, desc2, desc3, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc1, &desc2, &desc3, &amount, &amountInWord)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		taxInfo.Id = id
+		taxInfo.Name = name
+		taxInfo.InvoiceNumber = invoiceNumber
+		taxInfo.Date = dateVal
+		taxInfo.TanNumber = tanNumber
+		taxInfo.Fy = fy
+		taxInfo.OfficeName = officeName
+		taxInfo.Description1 = desc1
+		taxInfo.Description2 = desc2
+		taxInfo.Description3 = desc3
+		taxInfo.Amount = amount
+		taxInfo.AmountInWord = amountInWord
+	}
+
+	tmpl.ExecuteTemplate(w, "NewClone", taxInfo)
+	defer db.Close()
+}
+
 //Index handler
 func Index(w http.ResponseWriter, r *http.Request) {
 	db := dbConn()
@@ -434,6 +470,7 @@ func main() {
 	http.HandleFunc("/edit", Edit)
 	http.HandleFunc("/update", Update)
 	http.HandleFunc("/exportpdf", GeneratePdf)
+	http.HandleFunc("/clone-record", NewClone)
 	port := ":8200"
 	fmt.Println("Server is running on port" + port)
 

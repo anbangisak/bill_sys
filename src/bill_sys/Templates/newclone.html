@@ -1,0 +1,54 @@
+{{ define "NewClone" }}
+  {{ template "Header" }}
+    <div class="container col-5">
+        <h2>Edit Tax Info</h2>  
+        <form method="POST" action="/insert">
+          <div class="form-group">
+              <!-- <label> Name </label> -->
+              <input type="hidden" name="name" value="{{ .Name }}" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label> InvoiceNumber </label>
+            <input type="text" name="invoicenumber" value="{{ .InvoiceNumber }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Date </label>
+            <input type="text" name="dateval" value="{{ .Date }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Tan Number </label>
+            <input type="text" name="tannumber" value="{{ .TanNumber }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Financial Year </label>
+            <input type="text" name="fy" value="{{ .Fy }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+              <label> Office Name </label>
+              <input type="text" name="officename" value="{{ .OfficeName }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Description Line1 </label>
+            <input type="text" name="desc1" value="{{ .Description1 }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Description Line2</label>
+            <input type="text" name="desc2" value="{{ .Description2 }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Description Line3 </label>
+            <input type="text" name="desc3" value="{{ .Description3 }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Amount </label>
+            <input type="text" name="amount" value="{{ .Amount }}" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label> Amount In Words </label>
+            <input type="text" name="amountinword" value="{{ .AmountInWord }}" class="form-control"/>
+          </div>
+          <input type="submit" value="Submit TaxInfo" class="btn btn-primary" />
+        </form><br />
+    </div>  
+  {{ template "Footer" }}
+{{ end }}
