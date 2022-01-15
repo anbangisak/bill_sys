@@ -278,6 +278,7 @@ func GetTaxInfo(selDB *sql.Rows) TaxInfo {
 
 func GetInvoiceNum() int {
     db := dbConn()
+	defer db.Close()
 	selDB, err := db.Query("SELECT * FROM taxinfo ORDER BY id DESC LIMIT 1")
 	if err != nil {
 		panic(err.Error())
@@ -339,6 +340,7 @@ func NewClone(w http.ResponseWriter, r *http.Request) {
 func Index(w http.ResponseWriter, r *http.Request) {
 	db := dbConn()
 	selDB, err := db.Query("SELECT * FROM taxinfo ORDER BY id DESC")
+	// ("select * from product where name like ?", keyword + "%")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -499,6 +501,48 @@ func Update(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", 301)
 }
 
+func Search(w http.ResponseWriter, r *http.Request){
+    db := dbConn()
+	if r.Method == "GET"{
+	    tmpl.ExecuteTemplate(w, "Search", nil)
+	}else if r.Method == "POST"{
+	    tanNumber := r.FormValue("tannumber")
+		selDB, err := db.Query("SELECT * FROM taxinfo WHERE tannumber LIKE '"+ tanNumber + "%' ORDER BY id DESC LIMIT 1000")
+		if err != nil {
+			panic(err.Error())
+		}
+
+		taxInfo := TaxInfo{}
+		res := []TaxInfo{}
+
+		for selDB.Next() {
+			var id int
+			var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc1, desc2, desc3, amount, amountInWord string
+			err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc1, &desc2, &desc3, &amount, &amountInWord)
+			if err != nil {
+				panic(err.Error())
+			}
+			log.Println("Listing Row: Id " + string(id) + " | name " + name + " | invoiceNumber " + invoiceNumber + " | dateVal " + dateVal + " | tanNumber " + tanNumber + " | fy " + fy + " | officeName " + officeName + " | description1 " + desc1 + " | description2 " + desc2 + " | description3 " + desc3 + " | amount " + fmt.Sprintf("%f", amount) + " | amountInWord " + amountInWord)
+
+			taxInfo.Id = id
+			taxInfo.Name = name
+			taxInfo.InvoiceNumber = invoiceNumber
+			taxInfo.Date = dateVal
+			taxInfo.TanNumber = tanNumber
+			taxInfo.Fy = fy
+			taxInfo.OfficeName = officeName
+			taxInfo.Description1 = desc1
+			taxInfo.Description2 = desc2
+			taxInfo.Description3 = desc3
+			taxInfo.Amount = amount
+			taxInfo.AmountInWord = amountInWord
+			res = append(res, taxInfo)
+		}
+		tmpl.ExecuteTemplate(w, "Index", res)
+		defer db.Close()
+	}
+}
+
 func main() {
 
 	// use first time, when need to create db
@@ -518,6 +562,8 @@ func main() {
 	http.HandleFunc("/update", Update)
 	http.HandleFunc("/exportpdf", GeneratePdf)
 	http.HandleFunc("/clone-record", NewClone)
+	http.HandleFunc("/search", Search)
+	//http.HandleFunc("/list-search", ListSearch)
 	port := ":8200"
 	fmt.Println("Server is running on port" + port)
 
