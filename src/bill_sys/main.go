@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/jung-kurt/gofpdf"
 	_ "github.com/mattn/go-sqlite3"
@@ -193,7 +194,7 @@ func GeneratePdf(w http.ResponseWriter, r *http.Request) {
 
 	pdf.SetXY(15, 182)
 	// date_val := time.Now()
-	rupeesStr := "(" + taxInfo.AmountInWord + ")"
+	rupeesStr := "(Rupees " + taxInfo.AmountInWord + ")"
 	pdf.CellFormat(110, 10, rupeesStr, "0", 0, "CM", false, 0, "")
 
 	pdf.SetXY(20, 202)
@@ -248,19 +249,8 @@ func GeneratePdf(w http.ResponseWriter, r *http.Request) {
 
 var tmpl = template.Must(template.ParseGlob("Templates/*"))
 
-func New(w http.ResponseWriter, r *http.Request) {
-	tmpl.ExecuteTemplate(w, "New", nil)
-}
-
-func NewClone(w http.ResponseWriter, r *http.Request) {
-	db := dbConn()
-	nId := r.URL.Query().Get("id")
-	selDB, err := db.Query("SELECT * FROM taxinfo WHERE id=?", nId)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	taxInfo := TaxInfo{}
+func GetTaxInfo(selDB *sql.Rows) TaxInfo {
+    taxInfo := TaxInfo{}
 
 	for selDB.Next() {
 		var id int
@@ -273,6 +263,63 @@ func NewClone(w http.ResponseWriter, r *http.Request) {
 		taxInfo.Id = id
 		taxInfo.Name = name
 		taxInfo.InvoiceNumber = invoiceNumber
+		taxInfo.Date = dateVal
+		taxInfo.TanNumber = tanNumber
+		taxInfo.Fy = fy
+		taxInfo.OfficeName = officeName
+		taxInfo.Description1 = desc1
+		taxInfo.Description2 = desc2
+		taxInfo.Description3 = desc3
+		taxInfo.Amount = amount
+		taxInfo.AmountInWord = amountInWord
+	}
+	return taxInfo
+}
+
+func GetInvoiceNum() int {
+    db := dbConn()
+	selDB, err := db.Query("SELECT * FROM taxinfo ORDER BY id DESC LIMIT 1")
+	if err != nil {
+		panic(err.Error())
+	}
+	taxInfo := GetTaxInfo(selDB)
+	invoice_num := 1001
+	prev_invoice_num, err := strconv.Atoi(taxInfo.InvoiceNumber)
+	if err != nil {
+		panic(err.Error())
+	}else if (9999> prev_invoice_num) && (prev_invoice_num >1000){
+	    invoice_num = prev_invoice_num + 1
+	}
+	return invoice_num
+}
+
+func New(w http.ResponseWriter, r *http.Request) {
+    invoice_num := GetInvoiceNum()
+	taxInfo := TaxInfo{InvoiceNumber: fmt.Sprintf("%d", invoice_num)}
+	tmpl.ExecuteTemplate(w, "New", taxInfo)
+}
+
+func NewClone(w http.ResponseWriter, r *http.Request) {
+	db := dbConn()
+	nId := r.URL.Query().Get("id")
+	selDB, err := db.Query("SELECT * FROM taxinfo WHERE id=?", nId)
+	if err != nil {
+		panic(err.Error())
+	}
+    invoice_num := GetInvoiceNum()
+	taxInfo := TaxInfo{}
+
+	for selDB.Next() {
+		var id int
+		var name, invoiceNumber, dateVal, tanNumber, fy, officeName, desc1, desc2, desc3, amount, amountInWord string
+		err := selDB.Scan(&id, &name, &invoiceNumber, &dateVal, &tanNumber, &fy, &officeName, &desc1, &desc2, &desc3, &amount, &amountInWord)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		taxInfo.Id = id
+		taxInfo.Name = name
+		taxInfo.InvoiceNumber = fmt.Sprintf("%d", invoice_num)
 		taxInfo.Date = dateVal
 		taxInfo.TanNumber = tanNumber
 		taxInfo.Fy = fy
