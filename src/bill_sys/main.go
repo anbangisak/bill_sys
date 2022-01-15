@@ -339,7 +339,7 @@ func NewClone(w http.ResponseWriter, r *http.Request) {
 //Index handler
 func Index(w http.ResponseWriter, r *http.Request) {
 	db := dbConn()
-	selDB, err := db.Query("SELECT * FROM taxinfo ORDER BY id DESC")
+	selDB, err := db.Query("SELECT * FROM taxinfo ORDER BY id DESC LIMIT 1000")
 	// ("select * from product where name like ?", keyword + "%")
 	if err != nil {
 		panic(err.Error())
