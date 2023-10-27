@@ -1,2 +1,3 @@
-remove name
-clone exist record
+inventory number 1000 - 9999
+(Rupees 
+search
